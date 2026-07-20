@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GATE 2027 Prep — My Study App</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>%F0%9F%93%9A</text></svg>">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#7c3aed">
+<link rel="apple-touch-icon" href="icon-192.png">
+<script>
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => {
+      navigator.serviceWorker.register("sw.js").catch(err => console.log("SW registration failed:", err));
+    });
+  }
+</script>
+<style>
+  /* Fonts: using system fonts so the app loads instantly offline, no internet needed */
+  :root {
+    --bg: #0a0a0f; --surface: #111118; --card: #16161f; --border: #1e1e2e;
+    --accent: #7c3aed; --accent2: #06b6d4; --accent3: #f59e0b; --green: #10b981;
+    --red: #ef4444; --text: #e2e8f0; --muted: #64748b; --sub: #94a3b8;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:var(--bg); color:var(--text); font-family:-apple-system, 'Segoe UI', Roboto, sans-serif; min-height:100vh; }
+  header { background: linear-gradient(135deg,#0f0f1a 0%,#1a0a2e 50%,#0a1520 100%); border-bottom:1px solid var(--border); padding:26px 20px 18px; position:relative; overflow:hidden; }
+  header::before { content:''; position:absolute; top:-60px; left:-60px; width:280px; height:280px; background:radial-gradient(circle,rgba(124,58,237,0.15) 0%,transparent 70%); }
+  .header-label { font-family:'Consolas', 'SF Mono', Menlo, monospace; font-size:11px; color:var(--accent2); letter-spacing:3px; text-transform:uppercase; margin-bottom:6px; position:relative; }
+  header h1 { font-size:23px; font-weight:700; background:linear-gradient(90deg,#e2e8f0,#7c3aed); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; line-height:1.25; position:relative; }
+  .header-sub { margin-top:6px; color:var(--sub); font-size:13px; position:relative; }
+  .reality-box { margin-top:16px; background:rgba(239,68,68,0.08); border:1px solid rgba(239,68,68,0.3); border-radius:10px; padding:14px 16px; font-size:13px; color:#fca5a5; line-height:1.7; position:relative; }
+  .reality-box b { color:#fecaca; }
+  .tabs { display:flex; gap:0; padding:0 12px; background:var(--surface); border-bottom:1px solid var(--border); overflow-x:auto; }
+  .tab { padding:12px 16px; font-size:12.5px; font-weight:500; color:var(--muted); cursor:pointer; border-bottom:2px solid transparent; white-space:nowrap; }
+  .tab.active { color:var(--accent2); border-bottom-color:var(--accent2); }
+  .content { padding:20px 16px; max-width:780px; margin:0 auto; }
+  .hidden { display:none; }
+  .section-title { font-size:13px; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:2px; margin-bottom:14px; font-family:'Consolas', 'SF Mono', Menlo, monospace; }
+  .card { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:16px 18px; margin-bottom:16px; }
+  .daily-table { width:100%; border-collapse:collapse; font-size:13px; }
+  .daily-table th { text-align:left; padding:9px 10px; font-family:'Consolas', 'SF Mono', Menlo, monospace; font-size:10.5px; color:var(--muted); text-transform:uppercase; letter-spacing:1px; border-bottom:1px solid var(--border); }
+  .daily-table td { padding:10px; border-bottom:1px solid rgba(255,255,255,0.04); vertical-align:top; }
+  .daily-table tr:last-child td { border-bottom:none; }
+  .time-slot { font-family:'Consolas', 'SF Mono', Menlo, monospace; font-size:12px; color:var(--accent); white-space:nowrap; }
+  .note { color:var(--muted); font-size:11.5px; margin-top:2px; }
+  .day-row { display:flex; gap:12px; padding:12px 0; border-bottom:1px solid rgba(255,255,255,0.05); }
+  .day-row:last-child { border-bottom:none; }
+  .day-tag { font-family:'Consolas', 'SF Mono', Menlo, monospace; font-size:11px; color:var(--accent2); min-width:76px; flex-shrink:0; padding-top:2px; }
+  .day-tag.off { color:var(--green); }
+  .day-topics { font-size:13px; color:var(--text); line-height:1.6; flex:1; }
+  .item { display:flex; align-items:flex-start; gap:8px; padding:3px 0; cursor:pointer; user-select:none; }
+  .item-check { width:16px; height:16px; border-radius:5px; border:1.5px solid var(--muted); flex-shrink:0; margin-top:2px; display:flex; align-items:center; justify-content:center; transition:all .15s; }
+  .item-check.checked { background:var(--accent); border-color:var(--accent); }
+  .item-check.checked::after { content:'✓'; color:#fff; font-size:11px; font-weight:700; line-height:1; }
+  .item-text.checked { color:var(--muted); text-decoration:line-through; }
+  .day-progress { font-family:'Consolas', 'SF Mono', Menlo, monospace; font-size:9.5px; color:var(--muted); margin-top:4px; }
+  .phase { background:var(--card); border:1px solid var(--border); border-radius:12px; margin-bottom:16px; overflow:hidden; }
+  .phase-header { display:flex; align-items:center; gap:12px; padding:14px 16px; cursor:pointer; }
+  .phase-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+  .phase-title { font-size:14.5px; font-weight:600; flex:1; }
+  .phase-dates { font-family:'Consolas', 'SF Mono', Menlo, monospace; font-size:10.5px; color:var(--muted); }
+  .phase-toggle { color:var(--muted); font-size:18px; transition:transform .2s; }
+  .phase-toggle.open { transform:rotate(90deg); }
+  .phase-body { display:none; padding:0 16px 16px; border-top:1px solid var(--border); }
+  .phase-body.open { display:block; }
+  .tip-list li { color:var(--sub); font-size:13px; line-height:1.7; margin-left:16px; }
+  .tip-title { font-size:14px; font-weight:600; margin-bottom:8px; color:var(--accent2); }
+  .subject-row { display:flex; align-items:center; gap:12px; padding:11px 0; border-bottom:1px solid rgba(255,255,255,0.04); }
+  .subject-row:last-child { border-bottom:none; }
+  .s-name { font-size:13.5px; font-weight:500; width:150px; flex-shrink:0; }
+  .s-bar-wrap { flex:1; background:rgba(255,255,255,0.05); border-radius:4px; height:8px; }
+  .s-bar { height:8px; border-radius:4px; }
+  .s-marks { font-family:'Consolas', 'SF Mono', Menlo, monospace; font-size:11.5px; color:var(--muted); width:52px; text-align:right; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-label">GATE 2027 · ECE · Starting from Zero</div>
+  <h1>6-Month Accelerated Plan</h1>
+  <p class="header-sub">Jul 21, 2026 → Feb 2027 &nbsp;|&nbsp; Arihant GATE ECE Guide 2026 &nbsp;|&nbsp; 5 new topics/day</p>
+  <div class="reality-box">
+    <b>Honest calibration:</b> 90/100 is elite-topper range (AIR &lt;50) — not realistic from a zero base in 6 months while in college. This plan targets <b>60–75 marks</b> — strong enough for top NITs and several IITs. Push hard, but aim at the real target.
+  </div>
+</header>
+
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('routine')">⏰ Daily Routine</div>
+  <div class="tab" onclick="switchTab('phase1')">📆 Phase 1: First Pass</div>
+  <div class="tab" onclick="switchTab('phases234')">📅 Phase 2–4</div>
+  <div class="tab" onclick="switchTab('weightage')">📊 Weightage</div>
+  <div class="tab" onclick="switchTab('tips')">💡 Survival Tips</div>
+</div>
+
+<!-- DAILY ROUTINE -->
+<div class="content" id="tab-routine">
+  <p class="section-title">Tue – Sat (College 8 AM – 6 PM)</p>
+  <div class="card" style="padding:0;">
+    <table class="daily-table">
+      <tr><th>Time</th><th>Block</th></tr>
+      <tr><td><div class="time-slot">6:00–6:15</div></td><td>Wake, freshen up</td></tr>
+      <tr><td><div class="time-slot">6:15–7:15</div></td><td>New Topic — read the Arihant chapter for today's topics, note key formulas<div class="note">Just first-pass understanding, not mastery — that comes later</div></td></tr>
+      <tr><td><div class="time-slot">7:15–8:00</div></td><td>Get ready + commute</td></tr>
+      <tr><td><div class="time-slot">8:00–6:00 PM</div></td><td>College</td></tr>
+      <tr><td><div class="time-slot">6:00–6:45 PM</div></td><td>Commute home</td></tr>
+      <tr><td><div class="time-slot">6:45–7:30 PM</div></td><td>Break / short walk / eat something</td></tr>
+      <tr><td><div class="time-slot">7:30–9:30 PM</div></td><td>Same 5 topics — solve 3–4 Arihant solved examples per topic<div class="note">This is where the topic actually sinks in — don't skip it for new content</div></td></tr>
+      <tr><td><div class="time-slot">9:30–10:15 PM</div></td><td>Dinner</td></tr>
+      <tr><td><div class="time-slot">10:15–10:45 PM</div></td><td>Write today's formulas into one running formula notebook</td></tr>
+      <tr><td><div class="time-slot">10:45–11:30 PM</div></td><td>Free time</td></tr>
+      <tr><td><div class="time-slot">11:30 PM–6:00 AM</div></td><td>Sleep (6.5 hrs) — non-negotiable, this is how the day's learning consolidates</td></tr>
+    </table>
+  </div>
+
+  <p class="section-title">Sunday & Monday (Off — Consolidation Days)</p>
+  <div class="card" style="padding:0;">
+    <table class="daily-table">
+      <tr><th>Time</th><th>Block</th></tr>
+      <tr><td><div class="time-slot">7:30–8:00 AM</div></td><td>Wake, breakfast</td></tr>
+      <tr><td><div class="time-slot">8:00–11:00 AM</div></td><td>PYQ solving — every topic from the past week, from Arihant's PYQ section<div class="note">This is where zero-knowledge becomes real skill. Don't shortcut it.</div></td></tr>
+      <tr><td><div class="time-slot">11:00–11:20 AM</div></td><td>Break</td></tr>
+      <tr><td><div class="time-slot">11:20 AM–1:00 PM</div></td><td>Redo every PYQ you got wrong — understand why, not just the right answer</td></tr>
+      <tr><td><div class="time-slot">1:00–2:00 PM</div></td><td>Lunch + rest</td></tr>
+      <tr><td><div class="time-slot">2:00–4:00 PM</div></td><td>Second block: weakest topic of the week, or catch-up if you fell behind</td></tr>
+      <tr><td><div class="time-slot">4:00–5:00 PM</div></td><td>Break / workout</td></tr>
+      <tr><td><div class="time-slot">5:00–6:30 PM</div></td><td>(From Phase 2 onward) Mock test slot — otherwise more PYQ practice</td></tr>
+      <tr><td><div class="time-slot">6:30 PM onward</div></td><td>Free time — protect this, burnout is the real enemy here</td></tr>
+    </table>
+  </div>
+  <div style="background:rgba(124,58,237,0.08);border:1px solid rgba(124,58,237,0.25);border-radius:8px;padding:13px;font-size:12.5px;color:#c4b5fd;line-height:1.7;">
+    ⚡ Weekday: ~3 hrs/day new content + practice. Weekend: ~6–7 hrs/day consolidation. <b>Weekly total: ~27–30 hrs</b> — enough to cover everything once in ~5 weeks, then spend the remaining 20+ weeks turning "seen it" into "can solve it in 2 minutes under exam pressure."
+  </div>
+</div>
+
+<!-- PHASE 1 DAY BY DAY -->
+<div class="content hidden" id="tab-phase1">
+  <p class="section-title">Phase 1 · Jul 21 – Aug 22 (5 weeks) · Full syllabus, first pass</p>
+  <div class="card" style="padding:0 18px;">
+    <div id="phase1-days"></div>
+  </div>
+  <div style="background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.25);border-radius:8px;padding:13px;font-size:12.5px;color:#6ee7b7;margin-top:14px;">
+    By Aug 22, you'll have touched every ECE topic at least once. That's the milestone — not mastery. Mastery is what Phases 2–4 are for.
+  </div>
+</div>
+
+<!-- PHASES 2-4 -->
+<div class="content hidden" id="tab-phases234">
+  <p class="section-title">Phase 2 – 4 · Aug 23 → Feb 2027</p>
+
+  <div class="phase">
+    <div class="phase-header" onclick="togglePhase(this)">
+      <div class="phase-dot" style="background:#06b6d4;box-shadow:0 0 8px #06b6d488;"></div>
+      <div><div class="phase-title">Phase 2 — Subject-wise Mastery</div><div class="phase-dates">Aug 23 – Oct 11 &nbsp;·&nbsp; 7 weeks</div></div>
+      <div class="phase-toggle">›</div>
+    </div>
+    <div class="phase-body">
+      <p style="font-size:13px;color:var(--sub);line-height:1.8;padding-top:12px;">
+      Rotate through subjects in weightage order (Maths → Networks → Signals → EDC → Analog → Control → Comms → Digital → EMTL), spending ~4-5 days per subject. Weekday nights: solve 15-20 PYQs on that subject. Weekends: one subject-wise mini-mock (30 Qs, timed) + redo every wrong answer. No new topics — only PYQs, standard problems, and building speed. Start a formula-sheet-per-subject if you haven't already.
+      </p>
+    </div>
+  </div>
+
+  <div class="phase">
+    <div class="phase-header" onclick="togglePhase(this)">
+      <div class="phase-dot" style="background:#f59e0b;box-shadow:0 0 8px #f59e0b88;"></div>
+      <div><div class="phase-title">Phase 3 — Full Mock Test Phase</div><div class="phase-dates">Oct 12 – Dec 6 &nbsp;·&nbsp; 8 weeks</div></div>
+      <div class="phase-toggle">›</div>
+    </div>
+    <div class="phase-body">
+      <p style="font-size:13px;color:var(--sub);line-height:1.8;padding-top:12px;">
+      Full 65-question, 3-hour timed mock every Sunday (Arihant's mock/PYQ paper sets). Monday = pure error analysis: for every wrong question, figure out if it was a concept gap, a silly mistake, or a time-pressure mistake — they need different fixes. Weeknights: fix the top 3 weak topics surfaced by that week's mock. Add 30 min/day of GA — it's 15 free marks and compounds fast.
+      </p>
+    </div>
+  </div>
+
+  <div class="phase">
+    <div class="phase-header" onclick="togglePhase(this)">
+      <div class="phase-dot" style="background:#10b981;box-shadow:0 0 8px #10b98188;"></div>
+      <div><div class="phase-title">Phase 4 — Final Sprint</div><div class="phase-dates">Dec 7 – Feb 5 &nbsp;·&nbsp; 9 weeks</div></div>
+      <div class="phase-toggle">›</div>
+    </div>
+    <div class="phase-body">
+      <p style="font-size:13px;color:var(--sub);line-height:1.8;padding-top:12px;">
+      Dec 7 – Jan 10: mock every 3-4 days, alternating with formula-sheet revision — no new topics, ever. Jan 11 – Jan 25: light revision only, 4-5 hrs/day max, sleep protected. Jan 26 – Feb 4: formula sheets only, 1-2 hrs/day, rest. Feb 5: complete rest, check admit card/documents, sleep by 10 PM. Exam day: execute, don't panic on one hard question — mark and move on.
+      </p>
+    </div>
+  </div>
+</div>
+
+<!-- WEIGHTAGE -->
+<div class="content hidden" id="tab-weightage">
+  <p class="section-title">ECE Marks Distribution (Avg PYQ) — Study In This Order</p>
+  <div class="card" style="padding:16px 18px;">
+    <div class="subject-row"><div class="s-name">Engg. Maths</div><div class="s-bar-wrap"><div class="s-bar" style="width:85%;background:linear-gradient(90deg,#7c3aed,#a78bfa);"></div></div><div class="s-marks">~11 M</div></div>
+    <div class="subject-row"><div class="s-name">Network Theory</div><div class="s-bar-wrap"><div class="s-bar" style="width:78%;background:linear-gradient(90deg,#06b6d4,#67e8f9);"></div></div><div class="s-marks">~9 M</div></div>
+    <div class="subject-row"><div class="s-name">Signals & Systems</div><div class="s-bar-wrap"><div class="s-bar" style="width:78%;background:linear-gradient(90deg,#f59e0b,#fcd34d);"></div></div><div class="s-marks">~9 M</div></div>
+    <div class="subject-row"><div class="s-name">EDC</div><div class="s-bar-wrap"><div class="s-bar" style="width:78%;background:linear-gradient(90deg,#10b981,#6ee7b7);"></div></div><div class="s-marks">~9 M</div></div>
+    <div class="subject-row"><div class="s-name">Analog Circuits</div><div class="s-bar-wrap"><div class="s-bar" style="width:78%;background:linear-gradient(90deg,#ef4444,#fca5a5);"></div></div><div class="s-marks">~9 M</div></div>
+    <div class="subject-row"><div class="s-name">Control Systems</div><div class="s-bar-wrap"><div class="s-bar" style="width:74%;background:linear-gradient(90deg,#f97316,#fdba74);"></div></div><div class="s-marks">~8 M</div></div>
+    <div class="subject-row"><div class="s-name">Communications</div><div class="s-bar-wrap"><div class="s-bar" style="width:74%;background:linear-gradient(90deg,#ec4899,#f9a8d4);"></div></div><div class="s-marks">~8 M</div></div>
+    <div class="subject-row"><div class="s-name">Digital Circuits</div><div class="s-bar-wrap"><div class="s-bar" style="width:62%;background:linear-gradient(90deg,#0ea5e9,#7dd3fc);"></div></div><div class="s-marks">~7 M</div></div>
+    <div class="subject-row"><div class="s-name">EMTL</div><div class="s-bar-wrap"><div class="s-bar" style="width:55%;background:linear-gradient(90deg,#6b7280,#d4d4d8);"></div></div><div class="s-marks">~6 M</div></div>
+    <div class="subject-row"><div class="s-name">General Aptitude</div><div class="s-bar-wrap"><div class="s-bar" style="width:100%;background:linear-gradient(90deg,#34d399,#6ee7b7);"></div></div><div class="s-marks">15 M</div></div>
+  </div>
+  <div style="background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.25);border-radius:8px;padding:14px;margin-top:14px;font-size:13px;color:#6ee7b7;">
+    💡 GA is 15 free marks with zero engineering prerequisite. Starting it from Day 1 (not "later") is one of the highest-ROI moves on this whole plan.
+  </div>
+</div>
+
+<!-- TIPS -->
+<div class="content hidden" id="tab-tips">
+  <div class="card">
+    <div class="tip-title">📚 Using the Arihant Guide Efficiently</div>
+    <ul class="tip-list">
+      <li>Don't read every derivation in full — read theory once, then jump straight to solved examples</li>
+      <li>Mark every topic you find genuinely hard with a star — that's your Phase 2 priority list</li>
+      <li>Use Arihant's own PYQ sections at the end of each chapter for weekend practice</li>
+    </ul>
+  </div>
+  <div class="card">
+    <div class="tip-title">⚡ Rules for Learning 5 New Topics a Day</div>
+    <ul class="tip-list">
+      <li>Day-1 exposure is not mastery — you're building a map, not memorizing the terrain</li>
+      <li>If a topic doesn't click in the morning read, don't stall — move on, it'll make more sense after solving examples that night</li>
+      <li>Never skip the weekend PYQ block to "get ahead" on new topics — repetition is what actually builds the score</li>
+      <li>Negative marking: −1/3 for MCQ, 0 for NAT — attempt every NAT, be selective on MCQs you're unsure of</li>
+    </ul>
+  </div>
+  <div class="card">
+    <div class="tip-title">🎯 Realistic Score Ladder</div>
+    <ul class="tip-list">
+      <li><strong>45–55</strong> → Solid outcome for a zero-base 6-month sprint alongside college — decent NIT range</li>
+      <li><strong>55–65</strong> → Very strong for this timeline — good NITs, some IITs</li>
+      <li><strong>65–75</strong> → Excellent execution — top NITs, several IITs, PSU-eligible</li>
+      <li><strong>75+</strong> → Exceptional — would put you well ahead of the average full-timeline aspirant</li>
+      <li>90 stays out of reach in this timeline — but hitting 65-75 from zero in 6 months while in college is genuinely something to be proud of</li>
+    </ul>
+  </div>
+  <div class="card">
+    <div class="tip-title">🏋️ Don't Skip This</div>
+    <ul class="tip-list">
+      <li>Sleep is non-negotiable — 6+ hrs on weekdays, this is when the day's learning actually consolidates</li>
+      <li>Burnout around month 3-4 kills more GATE attempts than difficulty does — the Sunday evening free-time block exists on purpose, protect it</li>
+      <li>If you fall behind on Phase 1's schedule by a few days, that's fine — the buffer days at the end exist for exactly that</li>
+    </ul>
+  </div>
+</div>
+
+<script>
+const phase1Days = [
+  { day:"Tue", date:"Jul 21", items:["Matrix types & operations","Rank & Nullity","Eigenvalues & Eigenvectors","Cayley-Hamilton theorem","System of linear equations (Gauss elimination)"] },
+  { day:"Wed", date:"Jul 22", items:["Limits, Continuity & Differentiability","Mean Value Theorems","Maxima/Minima & Partial derivatives","Multiple integrals","First order Differential Equations"] },
+  { day:"Thu", date:"Jul 23", items:["Second order homogeneous DE","Second order non-homogeneous DE","Laplace transform method for DE","Analytic functions & Cauchy-Riemann eqns","Contour integration & Cauchy's theorem"] },
+  { day:"Fri", date:"Jul 24", items:["Residue theorem","Basic & conditional probability","Random variables & distributions","Mean, variance & correlation","Numerical methods (Newton-Raphson, Trapezoidal, Simpson's)"] },
+  { day:"Sat", date:"Jul 25", items:["KVL, KCL & source transformation","Node & Mesh analysis","Superposition theorem","Thevenin's & Norton's theorems","Maximum power transfer & reciprocity"] },
+  { day:"Sun", date:"Jul 26", off:true, items:["PYQ Practice: full week's Maths (Linear Algebra, Calculus, DE, Complex Variables) + Network basics"] },
+  { day:"Mon", date:"Jul 27", off:true, items:["Redo wrong answers from Sunday's PYQ set + build Formula Sheet #1 (Maths)"] },
+  { day:"Tue", date:"Jul 28", items:["Star-Delta transformation","AC steady-state analysis (phasors, impedance)","Resonance (series & parallel RLC)","Transient analysis: RL/RC circuits","Transient analysis: RLC circuits"] },
+  { day:"Wed", date:"Jul 29", items:["Two-port networks: Z & Y parameters","Two-port networks: H & ABCD parameters","Signal classification & basic operations","LTI systems & convolution","Fourier series (trig & exponential)"] },
+  { day:"Thu", date:"Jul 30", items:["Fourier transform (CTFT) properties","Laplace transform & ROC","Inverse Laplace & pole-zero analysis","Sampling theorem & aliasing","DTFT & properties"] },
+  { day:"Fri", date:"Jul 31", items:["Z-transform & ROC","Inverse Z-transform","DFT & FFT basics","Correlation (auto & cross)","Power & energy spectral density"] },
+  { day:"Sat", date:"Aug 1", items:["System stability analysis","Semiconductor basics (carrier concentration)","PN junction & diode characteristics","Diode applications (rectifiers, clippers, clampers)","Zener diode & breakdown"] },
+  { day:"Sun", date:"Aug 2", off:true, items:["PYQ Practice: Network Theory (full) + Signals & Systems (full)"] },
+  { day:"Mon", date:"Aug 3", off:true, items:["Redo wrong answers + build Formula Sheet #2 (Networks + Signals)"] },
+  { day:"Tue", date:"Aug 4", items:["BJT construction & configurations","BJT biasing & small-signal model","JFET characteristics & biasing","MOSFET construction & I-V characteristics","MOSFET small-signal model"] },
+  { day:"Wed", date:"Aug 5", items:["Amplifier frequency response basics","Op-amp basics & ideal characteristics","Inverting/non-inverting/summing amplifiers","Op-amp applications (integrator, differentiator)","Feedback amplifier types & effects"] },
+  { day:"Thu", date:"Aug 6", items:["Oscillators (Barkhausen, RC, Wien bridge)","Active filters (LP, HP, BP)","Schmitt trigger & comparators","Power amplifiers (Class A/B/AB/C)","Voltage regulators"] },
+  { day:"Fri", date:"Aug 7", items:["Multistage amplifiers","Open-loop vs closed-loop systems","Block diagram reduction & SFG (Mason's rule)","Time response of 1st/2nd order systems","Steady-state error & error constants"] },
+  { day:"Sat", date:"Aug 8", items:["Routh-Hurwitz stability criterion","Root locus technique","Bode plot (magnitude & phase)","Nyquist stability criterion","Compensators (lead, lag, lead-lag)"] },
+  { day:"Sun", date:"Aug 9", off:true, items:["PYQ Practice: EDC (full) + Analog Circuits (full)"] },
+  { day:"Mon", date:"Aug 10", off:true, items:["Redo wrong answers + build Formula Sheet #3 (EDC + Analog)"] },
+  { day:"Tue", date:"Aug 11", items:["State space representation","Controllability & observability","Amplitude modulation (DSB, SSB, VSB)","Angle modulation (FM, PM)","AM/FM demodulation techniques"] },
+  { day:"Wed", date:"Aug 12", items:["Superheterodyne receivers","Noise in communication systems","Digital modulation (PCM, DPCM)","Digital modulation (ASK, FSK, PSK)","Bit error rate & matched filters"] },
+  { day:"Thu", date:"Aug 13", items:["Channel capacity (Shannon's theorem)","Random processes basics","Number systems & codes","Boolean algebra & logic gates","K-map simplification"] },
+  { day:"Fri", date:"Aug 14", items:["Combinational circuits (adders, MUX, decoders)","Sequential circuits: flip-flops","Registers & shift registers","Counters (ripple & synchronous)","Finite state machines"] },
+  { day:"Sat", date:"Aug 15", items:["ADC & DAC techniques","Memory devices basics","Vector calculus basics","Electrostatics (Coulomb's & Gauss's law)","Magnetostatics (Biot-Savart, Ampere's law)"] },
+  { day:"Sun", date:"Aug 16", off:true, items:["PYQ Practice: Control Systems (full) + Communications (full)"] },
+  { day:"Mon", date:"Aug 17", off:true, items:["Redo wrong answers + build Formula Sheet #4 (Control + Comms)"] },
+  { day:"Tue", date:"Aug 18", items:["Maxwell's equations","EM wave propagation basics","Transmission line equations","Reflection coefficient & VSWR","Smith chart basics"] },
+  { day:"Wed", date:"Aug 19", items:["Waveguides & antennas basics","Verbal: grammar & vocabulary","Verbal: reading comprehension","Quant: number system & algebra","Quant: ratio, percentage, averages"] },
+  { day:"Thu", date:"Aug 20", items:["Data interpretation","Logical reasoning","Analytical aptitude","Quant: geometry & mensuration"] },
+  { day:"Fri", date:"Aug 21", items:["Buffer day — catch up on any topic you fell behind on this phase"] },
+  { day:"Sat", date:"Aug 22", items:["Buffer day — light PYQ mix across all 10 subjects, close out Phase 1"] },
+  { day:"Sun", date:"Aug 23", off:true, items:["PYQ Practice: Digital Circuits (full) + EMTL (full) + GA (full)"] },
+];
+
+let topicChecks = {};
+
+function loadChecks() {
+  try {
+    const raw = localStorage.getItem('gate-phase1-checks');
+    if (raw) topicChecks = JSON.parse(raw);
+  } catch (e) { /* no saved data yet */ }
+}
+
+function saveChecks() {
+  try { localStorage.setItem('gate-phase1-checks', JSON.stringify(topicChecks)); }
+  catch (e) { console.error('Storage save failed', e); }
+}
+
+function toggleCheck(key) {
+  topicChecks[key] = !topicChecks[key];
+  saveChecks();
+  renderPhase1();
+}
+window.toggleCheck = toggleCheck;
+
+function renderPhase1() {
+  const el = document.getElementById('phase1-days');
+  let html = '';
+  phase1Days.forEach((d, dIdx) => {
+    const tagClass = d.off ? 'day-tag off' : 'day-tag';
+    let doneCount = 0;
+    const itemsHtml = d.items.map((it,i) => {
+      const key = `${d.date}::${i}`;
+      const isChecked = !!topicChecks[key];
+      if (isChecked) doneCount++;
+      return `<div class="item" onclick="toggleCheck('${key}')">
+        <div class="item-check ${isChecked ? 'checked' : ''}"></div>
+        <span class="item-text ${isChecked ? 'checked' : ''}">${it}</span>
+      </div>`;
+    }).join('');
+    const progress = `${doneCount}/${d.items.length}`;
+    html += `<div class="day-row">
+      <div class="${tagClass}">${d.day}<br>${d.date}${d.off ? '<br><span style="font-size:9px;">OFF</span>' : ''}<div class="day-progress">${progress}</div></div>
+      <div class="day-topics">${itemsHtml}</div>
+    </div>`;
+  });
+  el.innerHTML = html;
+}
+
+loadChecks();
+renderPhase1();
+
+function switchTab(name) {
+  document.querySelectorAll('.content').forEach(c => c.classList.add('hidden'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.remove('hidden');
+  event.target.classList.add('active');
+}
+function togglePhase(header) {
+  const body = header.nextElementSibling;
+  const toggle = header.querySelector('.phase-toggle');
+  body.classList.toggle('open');
+  toggle.classList.toggle('open');
+}
+</script>
+
+</body>
+</html>
