@@ -72,9 +72,21 @@
   .s-bar-wrap { flex:1; background:rgba(255,255,255,0.05); border-radius:4px; height:8px; }
   .s-bar { height:8px; border-radius:4px; }
   .s-marks { font-family:'Consolas', 'SF Mono', Menlo, monospace; font-size:11.5px; color:var(--muted); width:52px; text-align:right; }
+  #alarm-toggle-btn {
+    position: fixed; bottom: 20px; right: 20px; z-index: 999;
+    background: #16161f; color: #e2e8f0; border: 1px solid #7c3aed;
+    border-radius: 24px; padding: 11px 18px; font-size: 13px; font-weight: 600;
+    box-shadow: 0 4px 16px rgba(124,58,237,0.35); cursor: pointer;
+    font-family: -apple-system, 'Segoe UI', Roboto, sans-serif;
+  }
+  #alarm-toggle-btn.alarm-on {
+    background: linear-gradient(90deg,#7c3aed,#06b6d4); border: none; color: #fff;
+  }
 </style>
 </head>
 <body>
+<button id="alarm-toggle-btn" onclick="toggleAlarms()">🔕 Enable Study Alarms</button>
+
 
 <header>
   <div class="header-label">GATE 2027 · ECE · Starting from Zero</div>
@@ -344,6 +356,124 @@ function togglePhase(header) {
   const toggle = header.querySelector('.phase-toggle');
   body.classList.toggle('open');
   toggle.classList.toggle('open');
+}
+
+/* ---------------- STUDY ALARM NOTIFICATIONS ---------------- */
+// days: 0=Sun,1=Mon,2=Tue,3=Wed,4=Thu,5=Fri,6=Sat  (JS's getDay())
+const WEEKDAY_DAYS = [2,3,4,5,6];   // Tue-Sat (college days)
+const WEEKEND_DAYS = [0,1];         // Sun, Mon (off days)
+
+const ALARM_SCHEDULE = [
+  { time:"06:00", days:WEEKDAY_DAYS, label:"Wake up — Day starts now" },
+  { time:"06:15", days:WEEKDAY_DAYS, label:"Start today's 5 new topics" },
+  { time:"19:30", days:WEEKDAY_DAYS, label:"PYQ practice block — solve today's topics" },
+  { time:"22:15", days:WEEKDAY_DAYS, label:"Formula notebook time" },
+  { time:"23:30", days:WEEKDAY_DAYS, label:"Sleep now — protect this" },
+  { time:"07:30", days:WEEKEND_DAYS, label:"Wake up — Day starts now" },
+  { time:"08:00", days:WEEKEND_DAYS, label:"PYQ solving block — this week's topics" },
+  { time:"11:20", days:WEEKEND_DAYS, label:"Redo every wrong PYQ from this morning" },
+  { time:"14:00", days:WEEKEND_DAYS, label:"Weakest topic of the week — focus block" },
+  { time:"17:00", days:WEEKEND_DAYS, label:"Mock test / PYQ block" },
+];
+
+const ALARM_PREF_KEY = "gate-alarms-enabled";
+let alarmCheckInterval = null;
+let firedToday = new Set();
+let firedTodayMarker = null;
+
+function alarmsEnabled() {
+  return localStorage.getItem(ALARM_PREF_KEY) === "1";
+}
+
+function updateAlarmButton() {
+  const btn = document.getElementById("alarm-toggle-btn");
+  if (!btn) return;
+  if (alarmsEnabled()) {
+    btn.textContent = "🔔 Alarms ON";
+    btn.classList.add("alarm-on");
+  } else {
+    btn.textContent = "🔕 Enable Study Alarms";
+    btn.classList.remove("alarm-on");
+  }
+}
+
+function fireStudyNotification(label, timeStr) {
+  const title = "GATE Study Alarm — " + timeStr;
+  const options = {
+    body: label,
+    icon: "icon-192.png",
+    badge: "icon-192.png",
+    vibrate: [200, 100, 200, 100, 200],
+    tag: "gate-alarm-" + timeStr,
+    renotify: true,
+    requireInteraction: true
+  };
+  if ("serviceWorker" in navigator && navigator.serviceWorker.ready) {
+    navigator.serviceWorker.ready.then(reg => reg.showNotification(title, options));
+  } else if ("Notification" in window) {
+    new Notification(title, options);
+  }
+}
+
+function checkAlarms() {
+  if (!alarmsEnabled()) return;
+  const now = new Date();
+  const todayMarker = now.toDateString();
+  if (todayMarker !== firedTodayMarker) {
+    firedToday = new Set();
+    firedTodayMarker = todayMarker;
+  }
+  const hh = String(now.getHours()).padStart(2, "0");
+  const mm = String(now.getMinutes()).padStart(2, "0");
+  const nowStr = `${hh}:${mm}`;
+  const weekday = now.getDay();
+
+  ALARM_SCHEDULE.forEach(slot => {
+    if (slot.days.includes(weekday) && slot.time === nowStr) {
+      const key = slot.time + slot.label;
+      if (!firedToday.has(key)) {
+        firedToday.add(key);
+        fireStudyNotification(slot.label, slot.time);
+      }
+    }
+  });
+}
+
+function startAlarmLoop() {
+  if (alarmCheckInterval) clearInterval(alarmCheckInterval);
+  alarmCheckInterval = setInterval(checkAlarms, 15000);
+  checkAlarms();
+}
+
+async function toggleAlarms() {
+  if (alarmsEnabled()) {
+    localStorage.setItem(ALARM_PREF_KEY, "0");
+    updateAlarmButton();
+    return;
+  }
+  if (!("Notification" in window)) {
+    alert("Notifications aren't supported in this browser.");
+    return;
+  }
+  let permission = Notification.permission;
+  if (permission !== "granted") {
+    permission = await Notification.requestPermission();
+  }
+  if (permission === "granted") {
+    localStorage.setItem(ALARM_PREF_KEY, "1");
+    updateAlarmButton();
+    startAlarmLoop();
+    fireStudyNotification("Study alarms are now active for your daily routine", "Enabled");
+  } else {
+    alert("Notifications were blocked — enable them in your browser/app settings to use study alarms.");
+  }
+}
+window.toggleAlarms = toggleAlarms;
+
+// Resume checking on load if alarms were already enabled
+updateAlarmButton();
+if (alarmsEnabled()) {
+  startAlarmLoop();
 }
 </script>
 
